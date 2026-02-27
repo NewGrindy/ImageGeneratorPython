@@ -23,7 +23,15 @@ Built with ttk, ttkthemes, and responsive layout styling.
 🛠️ Tech Stack
 
 Python 3.9+
+
 Tkinter / ttk
+
 Pillow (PIL)
+
 ttkthemes
+
 OpenAI API
+
+
+
+<img width="512" height="751" alt="image" src="https://github.com/user-attachments/assets/981c076d-248b-416d-aeda-f928778e7fc4" />
