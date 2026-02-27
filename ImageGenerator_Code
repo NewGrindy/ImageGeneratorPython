@@ -1,0 +1,245 @@
+import os
+from PIL import Image as PILImage, ImageTk
+from tkinter import *
+from tkinter import ttk
+from ttkthemes import ThemedTk
+import openai
+import base64
+client = openai.OpenAI(api_key = 'your api key here')
+OUTPUT_DIR = "outputs"
+current_images = []
+current_index = 0
+
+
+window = ThemedTk(theme="breeze")
+window.geometry("520x720")
+window.title("PolyGenix")
+window.resizable(False, False)
+
+style = ttk.Style(window)
+
+
+def apply_styles():
+    style.configure(
+        "Modern.TButton",
+        font=("Segoe UI Semibold", 11),
+        padding=10
+    )
+    style.configure(
+        "Modern.TRadiobutton",
+        font=("Segoe UI", 11)
+    )
+
+apply_styles()
+
+is_dark = BooleanVar(value=False)
+
+def toggle_theme():
+    window.set_theme("equilux" if is_dark.get() else "breeze")
+    apply_styles()
+
+def generate_ideas(user_text, n):
+    prompt = (
+        f"Give me {n} creative ideas: {user_text}\n"
+        f"Return ONLY {n} lines."
+    )
+
+    resp = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.9
+    )
+
+    ideas = []
+    for line in resp.choices[0].message.content.splitlines():
+        line = line.strip()
+        if line:
+            ideas.append(line)
+
+    return ideas[:n]
+
+
+def generate_images_from_ideas(ideas):
+    for idea in ideas:
+        img = client.images.generate(
+            model="dall-e-3",
+            prompt=idea,
+            size="1024x1024",
+            n=1
+        )
+        print(img.data[0].url)
+
+
+def generate_images_from_ideas2(ideas):
+    global current_images
+    paths = []
+
+    for i, idea in enumerate(ideas):
+        img = client.images.generate(
+            model="gpt-image-1.5",
+            prompt=idea,
+            size="1024x1024",
+            n=1,
+            output_format="jpeg"
+        )
+
+        filepath = os.path.join(OUTPUT_DIR, f"request_{i+1}.jpg")
+
+        b64 = img.data[0].b64_json
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(b64))
+
+        paths.append(filepath)
+
+    current_images = paths
+    return paths
+
+def showImage(ind):
+    global current_index
+
+    if not current_images:
+        return
+
+    ind = max(0, min(ind, len(current_images) - 1))
+    current_index = ind
+
+    pil_img = PILImage.open(current_images[ind])
+    pil_img = pil_img.resize((380, 380))
+
+    tk_img = ImageTk.PhotoImage(pil_img)
+    image_label.configure(image=tk_img)
+    image_label.image = tk_img
+
+
+def process(event=None):
+    user = text_widget.get().strip()
+    if not user:
+        return
+
+    n = 3 if rb.get() == "Choice3" else 1
+    ideas = generate_ideas(user, n)
+    generate_images_from_ideas2(ideas)
+    showImage(0)
+
+def preview():
+    showImage(0)
+
+
+def next_image():
+    global current_index
+    if not current_images:
+        return
+    current_index = (current_index + 1) % len(current_images)
+    showImage(current_index)
+
+
+def prev_image():
+    global current_index
+    if not current_images:
+        return
+    current_index = (current_index - 1) % len(current_images)
+    showImage(current_index)
+
+main_frame = ttk.Frame(window, padding=(30, 35))
+main_frame.pack(fill="both", expand=True)
+
+title = ttk.Label(
+    main_frame,
+    text="✨ PolyGenix",
+    font=("Segoe UI Semibold", 26)
+)
+title.pack(pady=(0, 30))
+
+dark_toggle = ttk.Checkbutton(
+    window,
+    text="Dark",
+    variable=is_dark,
+    command=toggle_theme
+)
+dark_toggle.place(relx=1.0, x=-20, y=20, anchor="ne")
+
+options_frame = ttk.Frame(main_frame)
+options_frame.pack(pady=25)
+
+rb = StringVar(value="Choice1")
+
+rad1 = ttk.Radiobutton(
+    options_frame,
+    text="1 Variant",
+    value="Choice1",
+    variable=rb,
+    style="Modern.TRadiobutton"
+)
+rad1.grid(row=0, column=0, padx=20)
+
+rad2 = ttk.Radiobutton(
+    options_frame,
+    text="3 Variants",
+    value="Choice3",
+    variable=rb,
+    style="Modern.TRadiobutton"
+)
+rad2.grid(row=0, column=1, padx=20)
+
+input_label = ttk.Label(
+    main_frame,
+    text="Describe your idea:",
+    font=("Segoe UI", 12)
+)
+input_label.pack(pady=(20, 8))
+
+text_widget = ttk.Entry(
+    main_frame,
+    width=45,
+    font=("Segoe UI", 13),
+    justify="center"
+)
+text_widget.pack()
+
+buttons_frame = ttk.Frame(main_frame)
+buttons_frame.pack(pady=35)
+
+
+image_label = ttk.Label(main_frame)
+image_label.pack(pady=(15, 0))
+nav_frame = ttk.Frame(main_frame)
+nav_frame.pack(pady=10)
+
+prev_button = ttk.Button(
+    nav_frame,
+    text="◀ Previous",
+    style="Modern.TButton",
+    command=prev_image
+)
+prev_button.grid(row=0, column=0, padx=10)
+
+next_button = ttk.Button(
+    nav_frame,
+    text="Next ▶",
+    style="Modern.TButton",
+    command=next_image
+)
+next_button.grid(row=0, column=1, padx=10)
+
+enter_button = ttk.Button(
+    buttons_frame,
+    text="Generate",
+    style="Modern.TButton",
+    command=process
+)
+enter_button.grid(row=0, column=0, padx=15, ipadx=20, ipady=8)
+
+preview_button = ttk.Button(
+    buttons_frame,
+    text="Preview",
+    style="Modern.TButton",
+    command=preview
+)
+preview_button.grid(row=0, column=1, padx=15, ipadx=20, ipady=8)
+
+
+
+
+
+window.mainloop()
+
