@@ -34,4 +34,5 @@ OpenAI API
 
 
 
-<img width="512" height="751" alt="image" src="https://github.com/user-attachments/assets/981c076d-248b-416d-aeda-f928778e7fc4" />
+<img width="701" height="879" alt="image" src="https://github.com/user-attachments/assets/c876558e-49c4-49ae-8bdc-e5b5f23fb0cb" />
+
